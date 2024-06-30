@@ -1,5 +1,8 @@
 const db = require("../db/db")
 
+const fs = require("fs")
+const path = require("path")
+
 const index = (req, res) => {
   const sql = "SELECT * FROM catalogo";
   db.query(sql, (error, rows) => {
@@ -29,13 +32,21 @@ const show = (req, res) => {
 }
 
 const store = (req, res) => {
+  console.log(req.file);
+
+  let imageName = "";
+  
+  if(req.file) {
+    imageName = req.file.filename
+  }
   const {CodigoArticulo, Descripcion, Medida, Color, Madera, Categoria} = req.body;
 
-  const sql = "INSERT INTO catalogo (CodigoArticulo, Descripcion, Medida, Color, Madera, Categoria) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(sql, [CodigoArticulo, Descripcion, Medida, Color, Madera, Categoria], (error, result) => {
+  const sql = "INSERT INTO catalogo (CodigoArticulo, Descripcion, Medida, Color, Madera, Categoria, imagen) VALUES (?, ?, ?, ?, ?, ?, ?)";
+  db.query(sql, [CodigoArticulo, Descripcion, Medida, Color, Madera, Categoria, imageName], (error, result) => {
     // console.log(result);
     if (error){
-      return res.status(500).json({error: 'intente mas tarde'})
+      // console.log(error);
+      return res.status(500).json({error: 'intente mas tarde'});
     }
 
     const producto = {...req.body, id: result.insertId}
@@ -67,8 +78,23 @@ const update = (req, res) => {
 const destroy = (req, res) => {
   const {id} = req.params;
 
-  const sql = "DELETE FROM catalogo WHERE CodigoArticulo = ?";
-  db.query(sql, [id], (error, result) => {
+    let sql = "SELECT * FROM catalogo WHERE CodigoArticulo = ?";
+    db.query(sql, [id], (error, rows) => {
+      // console.log(rows);
+      if (error){
+        return res.status(500).json({error: 'intente mas tarde'})
+      }
+  
+      if(rows.length == 0) {
+        return res.status(404).send({error: 'No existe el producto'})
+      }
+  
+      fs.unlinkSync(path.resolve(__dirname, "../public/uploads", rows[0].Imagen));
+
+    });
+
+    sql = "DELETE FROM catalogo WHERE CodigoArticulo = ?";
+    db.query(sql, [id], (error, result) => {
     // console.log(result);
     if (error){
       return res.status(500).json({error: 'intente mas tarde'})
@@ -88,5 +114,5 @@ module.exports = {
   show,
   store,
   update,
-  destroy
+  destroy,
 };
